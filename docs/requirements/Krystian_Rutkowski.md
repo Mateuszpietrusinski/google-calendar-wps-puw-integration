@@ -1,4 +1,4 @@
-# Ogólny opis
+# :octopus:Ogólny opis
 
 Najważniejszą funkcjonalnością dla mnie jest identyfikowanie oraz dodawanie do kalendarza Google nowych wydarzeń z platformy.
 Wskazane jest aby program działał automatycznie i w tle oraz aby możliwe było skonfigurowanie opcji przypominania o wydarzeniu.
