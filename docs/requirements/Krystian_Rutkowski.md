@@ -26,3 +26,5 @@ Tu się pojawiają dwa wydarzenia na platformie - czas rozpoczęcia oraz czas za
 * Opcjonalnie kolorowanie wydarzeń aby odróżnić, z którego przedmiotu to zadanie
 
 Najlepiej byłoby, gdyby program działał sobie w tle i raz ja kilka godzin (może nawet co godzinę) omiatał platformę w poszukiwaniu nowych wydarzeń.
+
+Reszta wkrótce
