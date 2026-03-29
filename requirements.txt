@@ -1,0 +1,22 @@
+# Runtime dependencies — pinned for reproducible installs
+# Regenerate with: pip freeze > requirements.txt (inside .venv after pip install -e .)
+apscheduler==3.10.4
+cachetools==5.3.3
+google-api-core==2.19.1
+google-api-python-client==2.136.0
+google-auth==2.30.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.1
+httplib2==0.22.0
+oauthlib==3.2.2
+python-dotenv==1.0.1
+pytz==2024.1
+requests==2.32.3
+requests-oauthlib==2.0.0
+six==1.16.0
+tzlocal==5.2
+uritemplate==4.1.1
+
+# Dev dependencies
+pytest==8.2.2
+pytest-mock==3.14.0

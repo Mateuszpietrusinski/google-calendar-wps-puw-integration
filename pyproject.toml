@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ahe-sync"
+version = "0.1.0"
+description = "Sync AHE PUW and WPS events into Google Calendar"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "apscheduler>=3.10",
+    "google-api-python-client>=2.0",
+    "google-auth-oauthlib>=1.0",
+    "python-dotenv>=1.0",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-mock>=3.12",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ahe_sync*"]

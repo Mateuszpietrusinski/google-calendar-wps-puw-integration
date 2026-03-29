@@ -1,3 +1,18 @@
+# ahe-sync
+.venv/
+.env
+token.json
+state.json
+.state.tmp
+prefs.json
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
 # Logs
 logs
 *.log
