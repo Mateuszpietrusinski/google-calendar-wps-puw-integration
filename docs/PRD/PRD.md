@@ -3,7 +3,7 @@
 ## Document Info
 | Field   | Value                              |
 |---------|------------------------------------|
-| Version | v1.0                               |
+| Version | v1.2                               |
 | Date    | 2026-03-16                         |
 | Author  | PM (AI-assisted)                   |
 | License | MIT                                |
@@ -55,147 +55,142 @@ The goal is a lightweight, **MIT-licensed open-source connector** built in **Nod
 
 ### 4.1 Technology Stack
 
-- **Runtime & language:** Node.js with TypeScript.
-- **Installation:** `npm install -g ahe-sync` — a single command installs the tool globally. No repository cloning, no Docker, no build step required from the student.
-- **OS support for MVP:** Windows, macOS, and Linux. The tool must work on all three without requiring WSL or platform-specific workarounds.
-- **Scheduling:** No OS-level cron or Task Scheduler. The daemon mode (`npm start`) runs as a long-lived process with an **internal scheduler**. The interactive CLI mode is a one-shot manual invocation — no scheduling involved.
+- **Runtime & language:** Python 3.10+.
+- **Installation:** To be confirmed by Architect — options include `pip install ahe-sync`, `pipx install ahe-sync`, or clone-and-run. See Section 7.
+- **OS support for MVP:** Windows, macOS, and Linux. The tool must work on all three without requiring platform-specific workarounds.
+- **Scheduling:** No OS-level cron or Task Scheduler. The daemon runs as a long-lived Python process with an **internal scheduler** (PUW: every 10 minutes; WPS: 12:00 and 21:00 CET, `Europe/Warsaw`).
+- **Mode:** Single mode only — **daemon**. There is no interactive CLI mode. All configuration is via `.env` file.
 
 ---
 
 ### 4.2 Deployment Model & Open Source
 
-The tool is MIT-licensed and supports **two distinct usage modes**. Students choose the mode that fits their setup. Both modes share the same npm package and the same Google OAuth flow.
+The tool is MIT-licensed and runs as a **local daemon** on the student's own machine. There is one usage model:
 
----
+1. Student installs the tool (method confirmed by Architect — see Section 7).
+2. Student creates a `.env` file with all required credentials and config.
+3. Student starts the daemon — the process runs indefinitely with an internal scheduler syncing PUW and WPS automatically.
+4. The student stops the process when they no longer need it.
 
-**Mode A — Interactive CLI (one-shot, local machine)**
+**All configuration and credentials live in the `.env` file.** There are no interactive prompts. The `.env` file is plaintext — the README must include a clear security warning: never commit it to version control, restrict file permissions to the owning user.
 
-*For students who want to run a manual sync on demand.*
-
-1. `npm install -g ahe-sync`
-2. Run `ahe-sync` — the CLI prompts interactively for WPS credentials, then PUW credentials.
-3. Credentials are used **at runtime only and never stored** — they live in memory for the duration of the process and are discarded when it exits.
-4. The CLI then prompts to connect a Google account (OAuth consent flow).
-5. A single sync cycle runs and the process exits.
-6. The student repeats `ahe-sync` whenever they want a fresh sync.
-
-*No scheduler, no background process, no persistent credential storage. This is the lowest-friction, highest-privacy option.*
-
----
-
-**Mode B — Daemon (`npm start`, self-hosted)**
-
-*For students who want continuous, automated sync on an always-on machine or server.*
-
-1. Student clones the repository.
-2. Student creates a `.env` file with WPS credentials, PUW credentials, and Google OAuth config.
-3. Run `npm start` — the process starts and runs indefinitely with an **internal scheduler** (PUW: every 10 minutes; WPS: 12:00 and 21:00 CET).
-4. The process stays alive and syncs on its own schedule without any further interaction.
-
-*The `.env` file is plaintext.* This is accepted for daemon/hosted mode because the student controls the server environment. However, the README must include a clear security warning: the `.env` file must never be committed to version control, and file permissions should be restricted to the owning user. Students running on a shared or public machine should use Mode A instead.
-
----
-
-**Credential storage policy by mode:**
-
-| | Mode A (interactive) | Mode B (daemon) |
-|---|---|---|
-| WPS credentials | Runtime only — never stored | `.env` file |
-| PUW credentials | Runtime only — never stored | `.env` file |
-| Google OAuth token | Prompted each run (or cached — see Section 7) | `.env` or local file (Architect to define) |
-| Security responsibility | Tool enforces no storage | Student is responsible for `.env` security |
+**Documentation standard:** All documentation written in Markdown following *Docs for Developers* principles — task-oriented, code examples for every step, explicit prerequisites. Target: a student can complete setup and have the daemon running in **≤ 30 minutes**.
 
 ---
 
 **Google OAuth — dual-path model:**
 
-The tool supports two authorisation paths. The **shared app** is the default for all students. The **per-user** path is the advanced option for privacy-conscious users and forks.
+The tool supports two authorisation paths. The **shared app** is the default. The **per-user** path is the advanced option for privacy-conscious users and forks.
 
 *Path A — Shared team app (default):*
-- The team publishes one Google OAuth 2.0 application registered under the project.
-- Students authorise this shared app to access their Google Calendar — no Google Cloud account needed.
-- The shared app's Client ID is bundled in the repository. The Client Secret is held by the team and **never committed to the repository**.
-- After OAuth consent, the student's access and refresh tokens are stored **locally on their own machine only**. No tokens are transmitted to or stored by the team.
-- ⚠️ **Verification status under investigation** — see Section 7 and Section 9. Until verified, users will see an "unverified app" warning. The README must explain this clearly.
+- The team publishes one Google OAuth 2.0 application. Students authorise it via a one-time browser consent flow — no Google Cloud account required.
+- The shared app's Client ID is in the repository. The Client Secret is held by the team and **never committed**.
+- After consent, the student's access and refresh tokens are stored **locally in a file on their own machine**. No tokens transmitted to the team.
+- ⚠️ **Verification status under investigation** — see Section 7 and Section 9.
 
 *Path B — Per-user self-registered app (advanced / forks):*
-- Students register their own Google Cloud project and supply their own Client ID and Client Secret via config or `.env`.
+- Students supply their own Client ID and Client Secret via `.env`.
 - Tokens stored locally. No dependency on the team's app.
 - Mandatory for all third-party forks.
-- README must include a step-by-step walkthrough for Google Cloud project setup.
 
 **Demo hosted instance:**
-- Runs in Mode B (`npm start`) using Mateusz Pietrusński's account with documented explicit consent.
-- Uses the shared team OAuth app. No other student's credentials should be entered.
-- Clearly labelled as demonstration only — not a shared connector service.
+- Runs as the daemon using Mateusz Pietrusński's account with documented explicit consent.
+- Uses the shared team OAuth app. No other student's credentials should be used.
+- Clearly labelled as demonstration only.
 
-**License:** MIT. Third-party forks accepted. AHE's permission is specific to this project. Forks are independently responsible for compliance and must use OAuth Path B.
+**License:** MIT. Third-party forks accepted. Forks must use OAuth Path B.
 
 ---
 
 ### 4.3 Repository & Connector Architecture
 
-PUW and WPS are implemented as **two separate connector modules within a single repository**. The architecture has the following layers:
+PUW and WPS are implemented as **two separate connector modules within a single Python repository**. The architecture has the following layers:
 
 **Shared core (always required):**
-- Google OAuth authorisation flow and token management (both paths)
-- Interactive credential prompting (Mode A)
-- `.env` file loading and validation (Mode B)
-- Internal scheduler for daemon mode (PUW: every 10 min; WPS: 12:00 and 21:00 CET)
-- Google Calendar event tagging mechanism (Section 4.5)
-- Config validation (poll floor enforcement)
+- `.env` file loading and validation
+- Google OAuth authorisation flow and token management (stored locally in a token file)
+- Google Calendar event tagging mechanism (Section 4.6)
+- Internal scheduler (PUW: every 10 min; WPS: 12:00 and 21:00 CET, `Europe/Warsaw`)
 - Terminal logging output formatter
 
 **PUW connector module (optional):**
-- PUW authentication and ICS fetching
-- PUW-specific event parsing and mapping
-- PUW sync state storage (previous ICS snapshot)
-- Enabled or disabled independently via config / env var
+- PUW authentication via Moodle web services (`POST /login/token.php` → `wstoken`)
+- Monthly calendar fetching via `core_calendar_get_calendar_monthly_view` (current month + 2 months ahead)
+- PUW-specific event type mapping and Google Calendar event construction
+- Event state tracking by Moodle `event.id` (integer)
+- Enabled by providing PUW credentials in `.env`; disabled if absent
 
 **WPS connector module (optional):**
-- WPS authentication and HTML table scraping
-- WPS-specific timetable parsing and mapping
-- WPS sync state storage (previous HTML snapshot)
-- Enabled or disabled independently via config / env var
+- WPS authentication via JWT (`POST /api/Profil/zaloguj` → bearer token)
+- Timetable fetching via `GET /api/PlanyZajec/GETPlanSzczegolowy` for current academic semester
+- WPS-specific schedule mapping and Google Calendar event construction
+- Event state tracking by `IDPlanZajecPoz` (stable integer)
+- Enabled by providing WPS credentials in `.env`; disabled if absent
 
-**"Independently usable" means:** a student who only wants PUW sync provides only PUW credentials. The WPS connector is not invoked — no WPS credentials required, no WPS schedule runs. The shared core is always present. The connectors are not separate packages or repositories.
+**"Independently usable" means:** a student who omits WPS credentials from `.env` runs only PUW sync, and vice versa. No other configuration change is required.
 
 ---
 
 ### 4.4 PUW Connector — In Scope
 
-- Authenticate against PUW using stored credentials.
-- Fetch events via the ICS export endpoint (`/calendar/export.php`).
-- **Minimum polling interval: 10 minutes.** Enforced in code — the tool refuses to schedule PUW sync at a shorter interval.
-- Default polling interval: 10 minutes (configurable upward via config).
-- **Create:** Add new events not yet in the calendar.
-- **Update:** Detect changed events and update the corresponding Google Calendar entry.
-- **Delete:** Detect removed events and delete the corresponding Google Calendar entry. Only tool-tagged events may be deleted. See Section 4.5.
-- Duplicate detection: match on ICS UID; fall back to title + start time + end time if UID is absent.
-- Event categories mapped from PUW:
-  - Online lectures / project sessions / labs — start & end time
-  - Submission deadlines — all-day event on final due date
-  - Online exams / quizzes — start & end time (merged from two platform timestamps where applicable)
-- Per-event data written to Google Calendar:
-  - Title: subject name
-  - Description: lecturer name, task/topic name, direct link to platform entry
-  - Time: exact start & end, or all-day for deadlines
-  - Optional: configurable reminder lead time per event type
-  - Optional: colour label per subject (configured via config file)
+**Authentication:** `POST /login/token.php?username=&password=&service=moodle_mobile_app` → returns `MoodleAuthTokenResponse.token` (`wstoken`). Pass as query param `wstoken` on all subsequent calls.
+
+**Data fetch:** `POST /webservice/rest/server.php?wsfunction=core_calendar_get_calendar_monthly_view&moodlewsrestformat=json` with `year` and `month` params. On each sync cycle, fetch **3 months**: current month, next month, and the month after.
+
+**Event deduplication:** By `MoodleCalendarEvent.id` (integer). No ICS snapshot diffing required — the API provides stable numeric IDs.
+
+**Event type mapping** (confirmed from `MoodleCalendarEvent.eventtype` and `modulename`):
+
+| `eventtype` | `modulename` | Google Calendar treatment |
+|---|---|---|
+| `meeting_start` | `clickmeeting` | Timed event — `timestart` to `timestart + timeduration` |
+| `due` | `assign` | All-day event on the due date (`timestart` date) |
+| `open` | `quiz` | Timed event — exam window open timestamp |
+| `close` | `quiz` | Timed event — exam window close timestamp (merge with `open` into single event) |
+| `attendance` | — | Timed event — include if `timeduration > 0`, skip if point-in-time |
+
+**Sync behaviour:**
+- **Create:** Event `id` not yet tagged in Google Calendar → create new event.
+- **Update:** Event `id` exists in Google Calendar but `timemodified` has changed → update existing event.
+- **Delete:** Event `id` was previously synced but is absent from current API response for the 3-month window → delete Google Calendar event.
+
+**Per-event data written to Google Calendar:**
+- Title: `MoodleCalendarEvent.course.fullname` + `activityname`
+- Description: `activitystr`, direct link via `MoodleCalendarEvent.viewurl`
+- Time: `timestart` to `timestart + timeduration` (timed); date-only for `due` type
+- Optional: configurable reminder lead time per event type
+- Optional: colour label per course (configured via config / env var)
+
+**Minimum polling interval: 10 minutes** — enforced in code.
 
 ---
 
 ### 4.5 WPS Connector — In Scope
 
-- Authenticate against WPS using stored credentials.
-- Parse the zjazd timetable (plan zajęć) from the HTML table.
-- **Polling schedule: twice daily at 12:00 CET and 21:00 CET.** This is the fixed default. The tool installs two scheduled jobs for WPS. No lower frequency is permitted; no shorter interval is accepted in config.
-- **Create / Update / Delete** behaviour applies on each poll cycle via HTML snapshot diffing. Mechanism defined by Architect — see Section 7.
-- Per-event data written to Google Calendar:
-  - Title: subject name
-  - Description: room, building, lecturer name
-  - Time: exact start & end per session
-  - Optional: configurable reminder
+**Authentication:** `POST https://wpsapi.ahe.lodz.pl/api/Profil/zaloguj` → returns `WpsAuthTokenResponse.access_token` (JWT bearer). Pass as `Authorization: Bearer <access_token>`. Student ID for subsequent queries is decoded from the JWT payload field `id`.
+
+**Data fetch:** `GET /api/PlanyZajec/GETPlanSzczegolowy` with params:
+- `CzyNieaktywnePlany=0`
+- `DataOd=<semester start date>` / `DataDo=<semester end date>` — **fixed to the current academic semester**
+- `StudentID=<id from JWT>`
+- `loader=none`
+
+**Event deduplication:** By `WpsPlanSzczegolowy.IDPlanZajecPoz` (stable integer ID per schedule entry). No HTML snapshot diffing required.
+
+**Polling schedule: twice daily at 12:00 CET and 21:00 CET** — fixed, internal scheduler in daemon mode.
+
+**Sync behaviour:**
+- **Create:** `IDPlanZajecPoz` not yet tagged in Google Calendar → create new event.
+- **Update:** `IDPlanZajecPoz` exists in Google Calendar but any field (room, time, teacher) has changed → update existing event.
+- **Delete:** `IDPlanZajecPoz` was previously synced but is absent from current API response → delete Google Calendar event.
+
+**Per-event data written to Google Calendar:**
+- Title: `WpsPlanSzczegolowy.PNazwa` + `TypZajec` (e.g. "Programowanie obiektowe 1 — Laboratorium")
+- Description:
+  - If `Webinar: false` → `SalaNumer`, `SalaAdres`, teacher names from `Dydaktyk[].ImieNazwisko`
+  - If `Webinar: true` → "Online (Webinar)", teacher names from `Dydaktyk[].ImieNazwisko`
+- Time: `DataOD` to `DataDO` (ISO datetime strings, CET-aware)
+- Optional: configurable reminder
 
 ---
 
@@ -248,70 +243,75 @@ The Architect defines the expected user recovery action per error class in Secti
 | Eksternistyczne student   | See submission deadlines as all-day events on their due date                | I can plan my work without re-reading the platform                 |
 | Eksternistyczne student   | See my zjazd timetable from WPS in my Google Calendar                      | I have my full schedule in one place                               |
 | Eksternistyczne student   | Have updated WPS timetable entries reflected in my calendar                 | Room or time changes don't catch me off guard on the zjazd day    |
-| Eksternistyczne student   | Run a command to force an immediate sync                                    | I can refresh without waiting for the next scheduled run           |
-| Eksternistyczne student   | Run a command to remove all future PUW or WPS events from my calendar      | I can cleanly uninstall or reset without manual cleanup            |
-| Eksternistyczne student   | Know from terminal output whether the last sync succeeded                   | I don't have to guess whether the tool is working                  |
+| Eksternistyczne student   | Run a command to remove all future PUW or WPS events from my calendar      | I can cleanly reset my calendar without manual cleanup             |
+| Eksternistyczne student   | Know from terminal output whether the last sync succeeded                   | I don't have to guess whether the daemon is working               |
 | Eksternistyczne student   | Understand from an error message what went wrong and what to do             | I can fix auth or config issues without digging through code       |
-| Eksternistyczne student   | Configure reminders per event type in a config file                         | I get notified before important deadlines or exam windows          |
-| Eksternistyczne student   | Colour-code events by subject via config file                               | I can visually distinguish subjects at a glance                    |
-| CS student (Mode A)       | Run `ahe-sync` and be prompted for my credentials interactively            | I don't need to configure files or store credentials anywhere      |
-| CS student (Mode A)       | Have my credentials used only during the sync run and then discarded       | Nothing sensitive is left on my machine after the process exits    |
-| CS student (Mode B)       | Run `npm start` with a `.env` file and have sync run automatically         | My machine stays in sync without me running commands manually      |
-| CS student (exit)         | Run `ahe-sync remove --source puw|wps` to clear synced events             | I can cleanly reset my calendar without manual cleanup             |
+| Eksternistyczne student   | Configure reminders per event type in a `.env` file                         | I get notified before important deadlines or exam windows          |
+| Eksternistyczne student   | Colour-code events by subject via `.env` file                               | I can visually distinguish subjects at a glance                    |
+| CS student (setup)        | Create a `.env` file and start the daemon in ≤ 30 minutes                  | I don't need to be an expert to get automated sync running         |
+| CS student (exit)         | Run a remove command to clear synced events from my calendar                | I can cleanly reset without manual cleanup                         |
 
 ---
 
 ## 6. Integrations & External Systems
 
-| System | Has API? | Auth Method | Notes |
-|--------|----------|-------------|-------|
-| Google Calendar | Yes | OAuth 2.0 (per-user, self-registered) | Each student registers their own Google Cloud project; credentials stored locally |
-| PUW (platforma.ahe.lodz.pl) | Partial | Session-based (details TBC) | ICS endpoint exists; auth requirements TBC; **AHE permission required — owner: Wiktor Purgał — deadline: end of March 2026** |
-| WPS (AHE schedule system) | No | Session-based / HTML scraping | No structured export; HTML table scraping required; **AHE permission required — owner: Wiktor Purgał — deadline: end of March 2026** |
+| System | Has API? | Auth Method | Confirmed Endpoints |
+|--------|----------|-------------|---------------------|
+| Google Calendar | Yes | OAuth 2.0 (per-user or shared team app) | Standard Google Calendar API v3 |
+| PUW / Moodle (platforma.ahe.lodz.pl) | **Yes — confirmed** | `wstoken` via `POST /login/token.php` | `POST /webservice/rest/server.php?wsfunction=core_calendar_get_calendar_monthly_view` |
+| WPS (wpsapi.ahe.lodz.pl) | **Yes — confirmed** | JWT bearer via `POST /api/Profil/zaloguj` | `GET /api/PlanyZajec/GETPlanSzczegolowy` |
 
-**Development gate:** While awaiting AHE permission, the team may proceed with building the shared core and Google Calendar integration layer. Development of the PUW and WPS scraping/parsing layer must not begin until AHE grants permission. If permission is denied by end of March: the team decides whether to halt, pivot to a manual-export import model, or proceed at personal risk with full documented awareness.
+**No AHE permission outreach required.** Both PUW and WPS expose documented REST APIs. Using a student's own credentials against these endpoints is equivalent to logging in as a student — no scraping, no ToS concern beyond normal fair-use of the student's own account. The ToS risk item has been removed from Section 9.
 
 ---
 
 ## 7. Open Questions for Architect
 
-> ⬜ Primary Architect handoff. All items below require technical decisions before the build sprint begins.
+> ⬜ Primary Architect handoff. Items marked ✅ are resolved by the confirmed API type definitions.
 > **Architect owner:** *To be named by the team — assign before build sprint kick-off.*
-> **Deadline for Section 7 responses:** End of March 2026, aligned with the AHE permission deadline. Unresolved items block the build sprint and leave 9 BDD scenarios in `🔲` state.
+> **Deadline for remaining responses:** End of March 2026. Unresolved items are marked `🔲` in BDD scenarios.
 
 **Technology & deployment:**
-- [ ] **npm global install packaging:** Define the TypeScript build and npm packaging configuration so `npm install -g ahe-sync` works reliably on Windows, macOS, and Linux. Specify the bin entry point and any peer dependency requirements (minimum Node.js version, etc.).
-- [ ] **Internal scheduler (daemon mode):** Design the internal scheduling mechanism for `npm start`. Recommend an approach (e.g. `node-cron`, `node-schedule`, or custom setInterval-based) for running PUW sync every 10 minutes and WPS sync at 12:00 and 21:00 CET with correct timezone handling. Scheduler must be robust to process restart — it should not drift or lose cycles after `npm start` is restarted.
-- [ ] **Google OAuth token caching in Mode A (interactive):** In interactive mode, the student is prompted to connect Google on every run if tokens are never stored. Define whether the Google OAuth token (access + refresh) is cached locally after first authorisation in Mode A, and if so, how (file, OS keychain) and with what expiry/revocation behaviour. If not cached, the student re-authorises on every `ahe-sync` invocation — confirm this is the intended UX.
-- [ ] **Config file schema (daemon mode):** Define the `.env` schema for Mode B — required and optional keys, naming conventions, and validation rules. The `.env` is the primary interface for daemon mode. Specify whether a separate non-secret config file is used for non-credential settings (poll intervals, colour codes, reminders) or whether all config lives in `.env`.
-- [ ] **Credentials security:** For Mode A (interactive), credentials are runtime-only — no storage needed. For Mode B (daemon), credentials live in a `.env` file. Define the file permission requirements, `.gitignore` enforcement, and any additional hardening recommendations. Confirm plaintext `.env` is acceptable for daemon/hosted mode with documented student responsibility.
-- [ ] **Shared OAuth app — verification feasibility:** Investigate whether the team's Google OAuth app can pass Google's verification process for `calendar.events` write scope on external accounts. Report: (a) what documentation is required, (b) likelihood of approval for a student project, (c) expected review timeline, (d) whether the unverified warning is a dismissible screen or a hard block for non-admin Google accounts.
-- [ ] **Shared OAuth app — Client Secret protection:** The Client Secret must never be committed to the repository. For a public npm package, define how the Client Secret is provided at runtime without being bundled in the package. Options: environment variable at first run, a separate private config, or a lightweight backend token-exchange endpoint. Recommend an approach.
+- [ ] **Python packaging:** Recommend the installation method — `pip install ahe-sync`, `pipx install ahe-sync`, or clone-and-run with `python -m ahe_sync`. Define `pyproject.toml` / `setup.cfg` entry point, minimum Python version (3.10+), and key dependencies (`requests`, `APScheduler` or equivalent, `google-api-python-client`, `python-dotenv`).
+- [ ] **Internal scheduler (daemon):** Recommend a Python scheduling library (`APScheduler`, `schedule`, or custom `threading.Timer`-based) for PUW sync every 10 minutes and WPS sync at 12:00 and 21:00 CET using `Europe/Warsaw` timezone. Scheduler must be restart-stable and not drift.
+- [ ] **Google OAuth token storage:** Define how the access/refresh token is persisted locally after the one-time browser consent flow — options: `token.json` file in the tool's config directory, OS keychain via `keyring`. Token file must never be committed to version control.
+- [ ] **`.env` schema:** Define all required and optional keys, naming conventions (e.g. `PUW_USERNAME`, `WPS_USERNAME`, `GOOGLE_CLIENT_ID`), validation rules, and defaults. Specify whether non-credential settings (reminder lead times, colour codes) live in `.env` or a separate config file.
+- [ ] **Credentials security:** Confirm plaintext `.env` is acceptable with documented file-permission hardening and `.gitignore` enforcement in README.
+- [ ] **Shared OAuth app — verification feasibility:** Investigate Google's verification requirements for `calendar.events` write scope. Report: (a) required documentation, (b) student-project approval likelihood, (c) review timeline, (d) whether unverified warning is dismissible or a hard block.
+- [ ] **Shared OAuth app — Client Secret protection:** Define how the Client Secret is provided at runtime without being committed or bundled in the package. Recommend an approach.
 
-**PUW connector:**
-- [ ] Does the PUW ICS export endpoint require an authenticated session, or is a token-in-URL flow available? What is the full auth flow?
-- [ ] What is the complete PUW ICS schema? Are lecturer name, task link, and event type reliably present, or will supplementary scraping be needed?
-- [ ] ICS UID-based duplicate detection — implementation approach and fallback when UID is absent?
-- [ ] **PUW snapshot diffing:** Where is the previous ICS snapshot stored between runs? How are changes and deletions detected reliably?
-- [ ] Is there evidence of rate-limiting or bot-detection on PUW at a 10-minute polling interval?
+**PUW connector — ✅ resolved by `moodle-auth.types.ts` and `moodle-calendar.types.ts`:**
+- ✅ Auth flow: `POST /login/token.php?username=&password=&service=moodle_mobile_app` → `wstoken`
+- ✅ Full event schema confirmed: `MoodleCalendarEvent` with `id`, `timestart`, `timeduration`, `timemodified`, `eventtype`, `modulename`, `course.fullname`, `activityname`, `viewurl`
+- ✅ Deduplication: by `MoodleCalendarEvent.id` (integer) — no ICS UID fallback needed
+- ✅ Change detection: compare `timemodified` timestamp on re-fetched events
+- ✅ Deletion detection: event `id` present in local state but absent from 3-month API response → delete
+- [ ] **Moodle API rate limits:** Confirm whether `core_calendar_get_calendar_monthly_view` has any rate-limiting at 3 calls per 10-minute cycle. Test against the live instance.
+- [ ] **`attendance` eventtype handling:** `eventtype: "attendance"` events appear in the type definitions. Define whether these should be synced, and if so, how they should be rendered in Google Calendar.
+- [ ] **`timeduration: 0` handling:** Some events are point-in-time (`timeduration = 0`). Define Google Calendar treatment — 0-duration event, or 1-hour default, or skip?
 
-**WPS connector:**
-- [ ] Can the WPS HTML timetable table be parsed reliably across semesters and student groups? Is there a stable per-student URL pattern?
-- [ ] **WPS snapshot diffing:** Where is the previous timetable state stored between runs? How are row-level changes detected (e.g. room change vs. session cancellation)?
-- [ ] Is there evidence of rate-limiting or bot-detection on WPS at twice-daily polling?
+**WPS connector — ✅ resolved by `wps-auth.types.ts` and `wps-plan-szczegolowy.types.ts`:**
+- ✅ Auth flow: `POST /api/Profil/zaloguj` → `access_token` (JWT bearer); student `id` decoded from JWT payload
+- ✅ Full schedule schema confirmed: `WpsPlanSzczegolowy` with `IDPlanZajecPoz`, `DataOD`, `DataDO`, `PNazwa`, `TypZajec`, `SalaNumer`, `SalaAdres`, `Dydaktyk[]`, `Webinar`
+- ✅ Deduplication: by `IDPlanZajecPoz` (stable integer) — no HTML snapshot diffing needed
+- ✅ Webinar handling: `Webinar: true` → `SalaNumer` and `SalaAdres` are `null` → description shows "Online (Webinar)"
+- [ ] **Semester date boundaries:** How does the tool determine `DataOd` / `DataDo` for the current academic semester? Options: (a) hardcoded semester calendar in config, (b) derived from the first/last `Data` field in a prior WPS response, (c) configurable by student. Recommend an approach.
+- [ ] **JWT token expiry:** `WpsJwtPayload.exp` indicates token lifetime (~6 hours per `expires_in: 21599`). Define the refresh strategy for daemon mode — re-authenticate before expiry, or on first 401 response?
+- [ ] **WPS API rate limits:** Confirm whether `GETPlanSzczegolowy` has rate-limiting at twice-daily polling.
+- [ ] **`NazwaGrupy` usage:** Some entries have a non-empty `NazwaGrupy` (e.g. "TECH"). Define whether this should appear in the Google Calendar event description.
 
 **Event tagging:**
-- [ ] Confirm that Google Calendar API extended properties support a persistent, tool-specific tag queryable for bulk operations. Recommend the field name and value format.
+- [ ] Confirm that Google Calendar API extended properties support a persistent, queryable tag for bulk operations. Recommend the field name and value format (e.g. `ahe-sync-source: "puw"`, `ahe-sync-id: "<moodle_event_id>"`).
 
-**Error handling & recovery — define tool behaviour AND expected student action for each:**
-- [ ] **Auth failure (PUW or WPS session expired):** Tool behaviour? Student recovery action?
-- [ ] **Auth failure (Google OAuth refresh token expired):** Re-authorisation flow from CLI?
-- [ ] **Parse failure (WPS HTML structure changed):** Does the tool skip WPS and continue PUW, or halt? What does the student do while waiting for a fix?
-- [ ] **Network failure (platform unreachable):** Retry in-run, or skip and wait for next scheduled cycle?
-- [ ] **Rate-limit hit (HTTP 429 or equivalent):** Back off and retry, or skip current cycle?
-- [ ] **Google Calendar API failure — sync cycle atomicity:** PM decision is per-event snapshot update (not all-or-nothing). If 5 events are being synced and 2 Calendar API writes fail, the snapshot is updated only for the 3 that succeeded. The 2 that failed remain in the diff on the next cycle and are retried. Confirm this is implementable and define how partial-write state is tracked without risking duplicates on retry (i.e. the retry must check for an existing tagged event before creating).
+**Error handling & recovery:**
+- [ ] **Auth failure (PUW — invalid `wstoken`):** Tool behaviour and student recovery action.
+- [ ] **Auth failure (WPS — expired JWT):** Re-authentication flow — automatic or prompted?
+- [ ] **Auth failure (Google OAuth — expired refresh token):** Re-authorisation CLI flow.
+- [ ] **Network failure (platform unreachable):** Retry in-run or skip to next cycle?
+- [ ] **HTTP 429 rate-limit hit:** Back off and retry, or skip current cycle?
+- [ ] **Google Calendar API failure — per-event atomicity:** PM decision is per-event state tracking. If 5 events are being synced and 2 Calendar API writes fail, local state is updated only for the 3 that succeeded. The 2 failures are retried on the next cycle. Confirm implementability and define duplicate-prevention on retry.
 
-> 🏗️ *Architect: please fill in feasibility, approach, and constraints for each item above.*
+> 🏗️ *Architect: please fill in feasibility, approach, and constraints for each open item above.*
 
 ---
 
@@ -319,13 +319,12 @@ The Architect defines the expected user recovery action per error class in Secti
 
 > Not blocked on an external designer. Resolve during implementation planning.
 
-- [ ] **CLI command interface (Mode A):** Proposed commands: `ahe-sync` (interactive one-shot sync, prompts for all credentials), `ahe-sync remove --source puw|wps` (clears tagged future calendar events), `ahe-sync uninstall` (no-op in Mode A — nothing to uninstall; confirm this or define behaviour). Team to confirm.
-- [ ] **Daemon entry point (Mode B):** `npm start` starts the long-lived process. Define whether any sub-commands are supported at runtime (e.g. graceful shutdown signal, force-sync trigger via stdin).
-- [ ] **Interactive prompt sequence:** Define the exact prompt order for Mode A: (1) WPS username, (2) WPS password, (3) PUW username, (4) PUW password, (5) Google OAuth browser launch. Confirm whether prompts are masked for passwords.
-- [ ] **Remove vs. uninstall distinction:** `ahe-sync remove --source puw|wps` clears tagged future events from Google Calendar but does not affect the daemon process. `ahe-sync uninstall` is relevant only in Mode B — it stops the `npm start` process (or is a README instruction, not a command). Confirm final approach.
-- [ ] **First-run OAuth flow:** After credential prompts, the tool launches a browser for Google OAuth consent. Define the local redirect URI (e.g. `localhost` callback), how the tool waits for the callback, and what happens if the browser doesn't open automatically.
+- [ ] **Entry point:** Confirm the command students run to start the daemon — proposed: `ahe-sync` (if installed via pip/pipx) or `python -m ahe_sync` (if cloned). Team to confirm based on Architect's packaging recommendation.
+- [ ] **First-run OAuth flow:** On first start, if no token file is found, the daemon opens a browser for Google OAuth consent, completes the localhost callback, saves the token file, then begins normal scheduling. Define behaviour if browser cannot open automatically (print URL to terminal for manual navigation).
+- [ ] **Graceful shutdown:** Define the signal handling — `CTRL+C` / `SIGTERM` should stop the daemon cleanly with a log line: `"Daemon stopped."`. No partial sync state should be left inconsistent.
 - [ ] **Success log format:** Proposed: `[2026-04-01 12:00:01 CET] [PUW] ✓ 2 created, 0 updated, 1 deleted`. Team to confirm.
 - [ ] **Error log format:** Must include: timestamp, source, error class, human-readable message, suggested user action. Team to define.
+- [ ] **`.env` missing at startup:** Daemon exits immediately with a clear message listing missing required fields — no partial startup.
 
 ---
 
@@ -333,19 +332,18 @@ The Architect defines the expected user recovery action per error class in Secti
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| AHE ToS or IT policy prohibits automated access to PUW/WPS | Unknown | **Critical** | **Owner: Wiktor Purgał. Deadline: end of March 2026.** Request permission before scraping development begins. If refused: team decides — halt, pivot to manual-export model, or proceed at personal documented risk. Shared core and Google Calendar layer may be built in parallel while waiting. |
-| PUW ICS export requires active session auth | High | High | Investigate first; fallback to authenticated HTTP scraping |
 | Tool accidentally deletes a personal calendar event | Low | High | Event tagging (Section 4.6) is non-negotiable; automated test coverage required for all delete operations |
 | RODO (Polish GDPR) — student credentials processed locally | Medium | High | Credentials never transmitted to project team; documented in README; MIT licence — each user is responsible for their own deployment |
 | Demo account (Mateusz Pietrusński) consent not formally documented | Low | High | Consent must be documented in the repository before the demo instance is made public |
-| WPS HTML structure changes between polls, breaking parser | Medium | High | Log parse failures; skip WPS and continue PUW; document known-good structure version in codebase |
-| AHE IP-bans the tool due to polling | Medium | High | Enforce poll minimums in code; randomise request timing slightly |
-| Google OAuth app not verified — "unverified app" warning blocks non-technical users | Unknown | High | **Investigation required — owner: Architect, deadline: end of March 2026.** If verification is not achievable for MVP, document the warning in the README with clear instructions for dismissing it safely. Assess whether the CS cohort target audience will be deterred. |
-| Shared OAuth app Client Secret exposed in repository | Low | High | Client Secret must never be committed; Architect to define the protection mechanism before shared app is published. |
-| Students' machines are off — sync doesn't run | Medium | Medium | Document clearly; out of scope to solve in v1 |
-| Google OAuth consent screen shows "unverified app" warning | Low | Medium | Expected; documented in setup guide as safe for personal use with own registered app |
-| Fewer than 2 cohort students respond with feedback | Medium | Medium | **Owner: Dariusz Lorenz.** Actively follow up via Discord; DoD requires minimum 2 responses |
-| WPS exam schedule is not scrapeable in v1 | High | Low | Explicitly out of scope |
+| Google OAuth app not verified — "unverified app" warning | Unknown | High | **Investigation required — owner: Architect, deadline: end of March 2026.** Document warning in README; assess whether CS cohort is deterred |
+| Shared OAuth app Client Secret exposed in repository | Low | High | Client Secret must never be committed; Architect to define protection mechanism before shared app is published |
+| Moodle `wstoken` expires mid-daemon-run | Medium | Medium | Define re-authentication strategy; `privatetoken` in auth response can regenerate `wstoken` without re-prompting |
+| WPS JWT expires mid-daemon-run (~6 hour lifetime) | Medium | Medium | Architect to define: re-authenticate proactively before expiry or reactively on 401 |
+| Moodle API rate-limits 3-month calendar fetch at 10-minute intervals | Unknown | Medium | Test against live instance before build; reduce fetch window or stagger requests if needed |
+| Semester date boundaries for WPS are unknown at runtime | Medium | Medium | Architect to define how `DataOd`/`DataDo` are determined; fallback: configurable in `.env` |
+| Students' machines are off — daemon doesn't run, sync missed | Medium | Medium | Document this limitation clearly; recommend leaving machine on or using a home server/Raspberry Pi; out of scope to solve in v1 |
+| Fewer than 2 cohort students respond with feedback | Medium | Medium | **Owner: Dariusz Lorenz.** Actively follow up via Discord |
+| `attendance` eventtype handling undefined | Low | Low | Architect to define; safe default is to skip attendance events in v1 |
 
 ---
 
@@ -354,12 +352,12 @@ The Architect defines the expected user recovery action per error class in Secti
 v1 is complete when **all of the following are true:**
 
 1. **PUW connector:** Create, update, and delete sync work correctly for all three event types (lecture/meeting, deadline, exam).
-2. **WPS connector:** Zjazd timetable create, update, and delete sync work correctly, running on the twice-daily schedule (12:00 CET and 21:00 CET) in daemon mode.
+2. **WPS connector:** Zjazd timetable create, update, and delete sync work correctly, running on the twice-daily schedule (12:00 CET and 21:00 CET).
 3. **Safety:** No personal calendar events are deleted during any sync or remove operation. Verified by automated tests.
 4. **Observability:** Terminal logging reports each sync run outcome with actionable error messages per the format agreed in Section 8.
-5. **Two-mode operation:** (a) Mode A — `npm install -g ahe-sync` followed by `ahe-sync` interactive prompts completes a full sync cycle without any config file or credential storage. (b) Mode B — `npm start` with a `.env` file runs as a stable long-lived daemon and syncs on schedule without manual intervention.
-6. **Setup documentation:** README written to *Docs for Developers* standard, in Markdown. Mode A walkthrough completable in **≤ 15 minutes** from `npm install` to first successful sync. Mode B walkthrough completable in **≤ 30 minutes** including `.env` setup. Both validated by at least one person who was not the author.
-7. **External validation:** Tool distributed to CS year cohort via Discord and GitHub link. At least **2 eksternistyczne cohort students** (beyond the 4 creators) complete a full calendar sync (covering at least one zjazd cycle) and submit feedback via Discord. Feedback reviewed and signed off by the creators. **Owner: Dariusz Lorenz.**
+5. **Daemon operation:** The daemon starts from a `.env` file, completes Google OAuth on first run, and syncs PUW and WPS continuously on schedule without manual intervention on Windows, macOS, and Linux.
+6. **Setup documentation:** README written to *Docs for Developers* standard, in Markdown. A student with no prior setup experience can have the daemon running in **≤ 30 minutes**. Validated by at least one person who was not the author.
+7. **External validation:** Tool distributed to CS year cohort via Discord and GitHub link. At least **2 eksternistyczne cohort students** (beyond the 4 creators) complete a full calendar sync covering at least one zjazd cycle and submit feedback via Discord. Feedback reviewed and signed off by creators. **Owner: Dariusz Lorenz.**
 
 Items explicitly excluded from the definition of done: graphical UI, WPS exam schedule, hosted demo quality, acting on cohort feedback.
 
@@ -369,7 +367,7 @@ Items explicitly excluded from the definition of done: graphical UI, WPS exam sc
 
 > Written in Gherkin. These scenarios define the expected behaviour of the system at integration boundaries. They are the basis for acceptance tests and serve as the shared language between Product and Engineering.
 >
-> **Status:** v1.0 — setup feature completely rewritten to reflect two-mode model (Mode A interactive CLI, Mode B daemon). Cron/OS scheduler scenarios removed. New features added: Mode A interactive flow, Mode B daemon scheduler, Google OAuth consent flow (shared app + per-user), remove synced events. All other features (PUW sync, WPS sync, tagging, timezone, error handling) unchanged from v0.8.
+> **Status:** v1.2 — Mode A feature removed entirely. Mode B renamed to "Daemon". OAuth consent flow updated to daemon-only context with token file reuse scenario. Remove feature updated to remove Mode A prompt reference. Shutdown scenario added. Python daemon language reflected throughout.
 >
 > **Out of scope for v1 BDD:** Behaviour when a student manually edits a synced event is explicitly descoped. The tool overwrites all tool-tagged event fields on each sync cycle. Manual edits to synced events will be silently overwritten. Students should not edit synced events directly — this will be documented in the README.
 
@@ -423,16 +421,16 @@ Feature: PUW calendar sync
 
   # --- First sync ---
 
-  Scenario: First PUW sync with no prior snapshot adds all fetched events
-    Given the PUW connector has never run before and no local ICS snapshot exists
-    And PUW contains the following 3 events:
-      | uid   | subject               | type    | start                | end                  |
-      | uid-1 | Bazy Danych — wykład 1 | lecture | 2026-04-05 10:00 CET | 2026-04-05 11:30 CET |
-      | uid-2 | Programowanie — projekt | submission deadline | 2026-04-15 00:00 CET | 2026-04-15 23:59 CET |
-      | uid-3 | Sieci — egzamin        | online exam | 2026-04-20 10:00 CET | 2026-04-20 12:00 CET |
+  Scenario: First PUW sync with no prior local state adds all fetched events
+    Given the PUW connector has never run before and no local event state exists
+    And the Moodle API returns the following 3 events for the current 3-month window:
+      | id   | subject                 | type                | start                | end                  |
+      | 1001 | Bazy Danych — wykład 1  | lecture             | 2026-04-05 10:00 CET | 2026-04-05 11:30 CET |
+      | 1002 | Programowanie — projekt | submission deadline | 2026-04-15 00:00 CET | 2026-04-15 23:59 CET |
+      | 1003 | Sieci — egzamin         | online exam         | 2026-04-20 10:00 CET | 2026-04-20 12:00 CET |
     When the PUW sync runs
     Then 3 new Google Calendar events are created matching the above subjects and times
-    And a local ICS snapshot containing all 3 event UIDs is saved for use in the next sync cycle
+    And the local state is updated to record Moodle event IDs 1001, 1002, 1003 as synced
 
   # --- Updates ---
 
@@ -501,19 +499,19 @@ Feature: WPS timetable sync
 
   # --- First sync ---
 
-  Scenario: First WPS sync with no prior snapshot adds all timetable sessions
-    Given the WPS connector has never run before and no local HTML snapshot exists
-    And the WPS timetable contains 4 sessions across 2 days:
-      | subject           | start                | end                  | room | building  | lecturer     |
-      | Bazy Danych       | 2026-04-18 09:00 CET | 2026-04-18 12:00 CET | 101  | Sterlinga | dr Kowalski  |
-      | Programowanie     | 2026-04-18 13:00 CET | 2026-04-18 16:00 CET | 102  | Sterlinga | dr Nowak     |
-      | Sieci             | 2026-04-19 09:00 CET | 2026-04-19 11:00 CET | 205  | Rewolucji | dr Wiśniewska|
-      | Algorytmy         | 2026-04-19 12:00 CET | 2026-04-19 15:00 CET | 205  | Rewolucji | dr Zając     |
+  Scenario: First WPS sync with no prior local state adds all timetable sessions
+    Given the WPS connector has never run before and no local event state exists
+    And the WPS API returns 4 sessions for the current semester:
+      | IDPlanZajecPoz | subject       | start                | end                  | room | building  | lecturer      |
+      | 5001           | Bazy Danych   | 2026-04-18 09:00 CET | 2026-04-18 12:00 CET | 101  | Sterlinga | dr Kowalski   |
+      | 5002           | Programowanie | 2026-04-18 13:00 CET | 2026-04-18 16:00 CET | 102  | Sterlinga | dr Nowak      |
+      | 5003           | Sieci         | 2026-04-19 09:00 CET | 2026-04-19 11:00 CET | 205  | Rewolucji | dr Wiśniewska |
+      | 5004           | Algorytmy     | 2026-04-19 12:00 CET | 2026-04-19 15:00 CET | 205  | Rewolucji | dr Zając      |
     When the WPS sync runs
     Then 4 Google Calendar events are created
     And the event for "Bazy Danych" has start "2026-04-18 09:00 CET", end "2026-04-18 12:00 CET", and description containing "room 101, Sterlinga, dr Kowalski"
     And each event is tagged with source "wps" in its extended properties
-    And a local HTML snapshot is saved for use in the next sync cycle
+    And the local state is updated to record IDPlanZajecPoz 5001, 5002, 5003, 5004 as synced
 
   # --- Updates ---
 
@@ -602,68 +600,18 @@ Feature: Event tagging and safe deletion
 
 ---
 
-### Feature: Mode A — Interactive CLI
+### Feature: Daemon Startup and Scheduling
 
 ```gherkin
-Feature: Mode A — interactive CLI one-shot sync
-  As a CS student who wants to sync on demand without storing credentials
-  I want to run ahe-sync interactively and have the sync complete in one session
-  So that nothing sensitive is left on my machine after the process exits
-
-  Scenario: Interactive Mode A prompts for credentials in sequence and runs a full sync
-    Given the student has run "npm install -g ahe-sync"
-    And the student has not previously run ahe-sync on this machine
-    When the student runs "ahe-sync"
-    Then the CLI prompts "WPS username:" and the student enters their username
-    And the CLI prompts "WPS password:" and the student enters their password (masked)
-    And the CLI prompts "PUW username:" and the student enters their username
-    And the CLI prompts "PUW password:" and the student enters their password (masked)
-    And the CLI opens a browser window to the Google OAuth consent screen
-    And after the student grants calendar access, a full PUW and WPS sync cycle runs
-    And the terminal outputs a summary line for PUW and a summary line for WPS
-    And when the process exits, no credentials are stored anywhere on the machine
-
-  Scenario: Mode A credentials are not persisted after process exit
-    Given the student has completed a Mode A sync run
-    When the process exits
-    Then no WPS or PUW credentials exist in any file, keychain, or config on the machine
-    And the next run of "ahe-sync" will prompt for credentials again
-
-  Scenario: Mode A runs only the connectors for which credentials were provided
-    Given the student provides WPS credentials but skips PUW credentials when prompted
-    When the sync runs
-    Then only the WPS sync executes
-    And no PUW sync is attempted
-    And the terminal outputs a WPS summary line only
-
-  Scenario: Mode A OAuth uses shared team app by default
-    Given no custom Client ID is configured
-    When the student completes the Google OAuth consent flow in Mode A
-    Then the tool uses the shared team OAuth app Client ID
-    And the student may see an "unverified app" warning — expected and documented in the README
-    And the access token and refresh token are handled in-memory for this session only  🔲
-    # Token caching behaviour to be confirmed by Architect (Section 7)
-
-  Scenario: Mode A OAuth uses per-user app when custom Client ID is present  🔲
-    # Mechanism for supplying Client ID in Mode A (env var? prompt?) to be confirmed by Architect
-    Given the student has set the OAUTH_CLIENT_ID environment variable
-    When the student runs "ahe-sync"
-    Then the tool uses the student's own OAuth app for the consent flow
-```
-
----
-
-### Feature: Mode B — Daemon (`npm start`)
-
-```gherkin
-Feature: Mode B — daemon with internal scheduler
+Feature: Daemon startup and internal scheduling
   As a CS student who wants continuous automated sync on an always-on machine
-  I want to run npm start with a .env file and have sync run automatically on schedule
+  I want to run the daemon with a .env file and have sync run automatically on schedule
   So that I never have to manually trigger a sync
 
   Scenario: Daemon starts and schedules both connectors from .env
     Given a valid .env file exists with PUW credentials, WPS credentials, and Google OAuth config
-    When the student runs "npm start"
+    And a valid Google OAuth token file exists from a prior authorisation
+    When the student starts the daemon
     Then the daemon process starts and logs "Daemon started. PUW sync every 10 min. WPS sync at 12:00 and 21:00 CET."
     And the internal PUW scheduler fires every 10 minutes
     And the internal WPS scheduler fires at 12:00 CET and 21:00 CET
@@ -671,19 +619,29 @@ Feature: Mode B — daemon with internal scheduler
 
   Scenario: Daemon starts with only PUW credentials and runs only PUW sync
     Given the .env file contains PUW credentials but no WPS credentials
-    When the student runs "npm start"
+    When the student starts the daemon
     Then only the PUW internal scheduler is started
     And no WPS sync is attempted
     And the terminal logs "WPS connector disabled — no credentials provided."
 
   Scenario: Daemon validates .env at startup and exits on missing required field
     Given the .env file is missing the required field "PUW_USERNAME"
-    When the student runs "npm start"
+    When the student starts the daemon
     Then the process exits immediately with error "Missing required env var: PUW_USERNAME"
     And no sync is attempted
 
+  Scenario: Daemon triggers Google OAuth browser flow on first run when no token file exists
+    Given a valid .env file exists with all credentials
+    And no Google OAuth token file exists on the machine
+    When the student starts the daemon
+    Then the tool opens a browser window to the Google OAuth consent screen
+    And a local HTTP listener starts on a localhost port to receive the callback
+    And after the student grants access, the token file is saved locally
+    And the terminal outputs "Google authorisation successful. Daemon scheduler starting."
+    And the internal schedulers begin running
+
   Scenario: Daemon internal scheduler fires PUW sync on time
-    Given the daemon has been running for 10 minutes since last PUW sync
+    Given the daemon has been running for 10 minutes since the last PUW sync
     When the internal PUW scheduler fires
     Then a PUW sync cycle executes
     And the terminal outputs a PUW summary line with timestamp
@@ -705,46 +663,58 @@ Feature: Mode B — daemon with internal scheduler
     When the daemon runs a sync cycle
     Then no credential values appear in any terminal output line
     And the log contains only sync summary and error information
+
+  Scenario: Daemon shuts down cleanly on SIGTERM or CTRL+C
+    Given the daemon is running and mid-way through a sync cycle
+    When the student sends SIGTERM or presses CTRL+C
+    Then the current sync cycle completes or is safely abandoned
+    And the terminal outputs "Daemon stopped."
+    And no partial or corrupted event state is left behind
 ```
 
 ---
 
-### Feature: Google OAuth Consent Flow (both modes)
+### Feature: Google OAuth Consent Flow
 
 ```gherkin
 Feature: Google OAuth consent flow
-  As a student using either Mode A or Mode B
+  As a student setting up the daemon for the first time
   I want to connect my Google account once and have calendar access granted
-  So that the tool can write events to my primary Google Calendar
+  So that the daemon can write events to my primary Google Calendar automatically
 
   Scenario: OAuth flow opens browser and completes via localhost callback
-    Given the student has provided PUW and WPS credentials
+    Given the daemon detects no existing token file on startup
     When the tool initiates the Google OAuth flow
     Then the tool opens a browser window to the Google consent screen
     And a local HTTP listener starts on a localhost port to receive the OAuth callback
     And after the student grants access, the callback delivers the authorisation code
     And the tool exchanges the code for an access token and refresh token
+    And the token is saved to a local token file
     And the terminal outputs "Google authorisation successful."
 
   Scenario: OAuth flow with shared app shows unverified warning
-    Given the shared team app is used (no custom Client ID configured)
+    Given the shared team app is used (no custom Client ID in .env)
     When the Google consent screen loads in the browser
     Then the student sees the team's app name on the consent screen
     And the student may see an "unverified app" warning
     And after dismissing the warning and granting access, the token exchange completes normally
 
   Scenario: OAuth flow with per-user app uses student's own consent screen
-    Given the student has configured their own Client ID and Client Secret
+    Given the student has set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env
     When the Google consent screen loads in the browser
     Then the student sees their own registered app name on the consent screen
-    And no unverified warning appears (assuming the student's app is not in production mode)
 
   Scenario: OAuth flow fails gracefully if browser does not open
     Given the student's system cannot launch a browser automatically
     When the tool initiates the Google OAuth flow
-    Then the terminal outputs the OAuth consent URL for the student to open manually
-    And "Open this URL in your browser to authorise: <url>"
+    Then the terminal outputs "Open this URL in your browser to authorise: <url>"
     And the local HTTP listener continues waiting for the callback
+
+  Scenario: Daemon reuses existing token file without re-prompting
+    Given a valid token file already exists from a prior authorisation
+    When the daemon starts
+    Then no browser window is opened
+    And the daemon proceeds directly to starting the internal schedulers
 ```
 
 ---
@@ -752,7 +722,7 @@ Feature: Google OAuth consent flow
 ### Feature: Remove Synced Events
 
 ```gherkin
-Feature: Remove synced events (both modes)
+Feature: Remove synced events
   As a student who wants to clean up their calendar
   I want to remove all future synced events by source
   So that I can reset without manually deleting calendar entries
@@ -770,10 +740,11 @@ Feature: Remove synced events (both modes)
     Then all future WPS-sourced events are deleted
     And all personal events and PUW-sourced events remain untouched
 
-  Scenario: Remove command requires Google credentials to be available
-    Given the student runs "ahe-sync remove --source puw" in Mode A
-    Then the CLI prompts for Google OAuth if no token is available
-    And after authorisation, the remove operation proceeds
+  Scenario: Remove command requires a valid Google OAuth token to be present
+    Given no valid token file exists on the machine
+    When the student runs "ahe-sync remove --source puw"
+    Then the tool outputs "No valid Google authorisation found. Run the daemon first to complete OAuth setup."
+    And no calendar events are modified
 ```
 
 ---
@@ -799,10 +770,10 @@ Feature: Timezone handling
 
   Scenario: PUW event times are stored in CET/CEST regardless of machine timezone
     Given the machine running the tool is set to system timezone "UTC"
-    And a PUW lecture exists in the ICS feed with DTSTART "20260405T090000" and TZID "Europe/Warsaw"
+    And the Moodle API returns a lecture with "timestart" Unix timestamp equivalent to "09:00 Europe/Warsaw"
     When the PUW sync runs
-    Then the Google Calendar event is created with start time equivalent to "09:00 Europe/Warsaw"
-    And the event does not use the machine's UTC offset to interpret the time
+    Then the Google Calendar event is created with start time "09:00 Europe/Warsaw"
+    And the event does not use the machine's UTC offset to interpret the timestamp
     And a student viewing the event in Google Calendar set to "Europe/Warsaw" sees "09:00"
 ```
 
@@ -870,15 +841,15 @@ Feature: Error handling and terminal observability
     And the next scheduled sync runs normally
 
   Scenario: Google Calendar API failure is logged and failed events are retried next cycle
-    Given the PUW sync fetches 5 events: "uid-1", "uid-2", "uid-3", "uid-4", "uid-5"
-    And the Google Calendar API successfully writes events "uid-1", "uid-2", "uid-3"
-    And the Google Calendar API returns an error for events "uid-4" and "uid-5"
+    Given the PUW sync fetches 5 events with Moodle IDs: 1001, 1002, 1003, 1004, 1005
+    And the Google Calendar API successfully writes events for IDs 1001, 1002, 1003
+    And the Google Calendar API returns an error for IDs 1004 and 1005
     When the PUW sync completes
     Then the terminal outputs an error line with error class "CALENDAR_API_FAILURE"
     And the error message states "2 events failed to write to Google Calendar"
-    And the local ICS snapshot is updated to include only "uid-1", "uid-2", "uid-3"
-    And "uid-4" and "uid-5" remain outside the snapshot so they are retried on the next cycle
-    And no duplicate events are created for "uid-1", "uid-2", "uid-3" on retry because the tag check prevents it
+    And the local state is updated to mark only IDs 1001, 1002, 1003 as synced
+    And IDs 1004 and 1005 remain unsynced so they are retried on the next cycle
+    And no duplicate events are created for IDs 1001, 1002, 1003 on retry because the tag check prevents it
 
   Scenario: Each connector logs independently in the same cycle
     Given both PUW and WPS connectors are enabled and both complete without errors
@@ -915,3 +886,5 @@ The following are deferred post-MVP. Priorities informed by cohort feedback coll
 | v0.8    | 2026-03-16 | BDD and PRD revised following sixth PM review: (1) removed submission deadline from Scenario Outline — contradiction with all-day event scenario resolved; deadline type in its own standalone scenario only; (2) Google Calendar API failure retry logic clarified as per-event snapshot update — Architect question added; (3) OAuth expiry scenario fixed — "When any sync runs" replaced with specific trigger; OAuth validation confirmed to happen before any PUW/WPS work; (4) CEST scheduler scenario replaced with application-level timezone scenario testing IANA timezone handling in ICS feed; (5) first-sync PUW scenario now uses concrete data table with UIDs; (6) PUW auth failure scenario — removed spurious WPS independence assertion with explanatory comment; (7) Section 7 — added Architect owner placeholder and end-of-March deadline; (8) Section 4.1/4.3 Docker vs CLI conflict resolved as conditional scope — scheduled job installer only applies to CLI model; (9) deadline lecturer field annotated as pending ICS schema confirmation; (10) ahe-sync status descoped from MVP in Section 8; (11) `ahe-sync uninstall` command defined in Section 8 as distinct from `remove`; three uninstall BDD scenarios added to Setup feature; uninstall user story added to Section 5. |
 | v0.9    | 2026-03-16 | Google OAuth model updated to dual-path: shared team app as default (no Google Cloud account needed), per-user self-registered app as advanced option for privacy-conscious users and forks. Section 4.2 rewritten. Two Section 7 Architect questions added: OAuth app verification feasibility and Client Secret protection. Two Section 9 risks added. BDD setup OAuth scenario replaced with two path-specific scenarios. Forks required to use per-user path. |
 | v1.0    | 2026-03-16 | Major architecture revision: two-mode model defined. Mode A (interactive CLI, `ahe-sync`, credentials runtime-only, one-shot) and Mode B (daemon, `npm start`, credentials via `.env`, internal scheduler). Docker and OS cron entirely removed. Installation changed to `npm install -g ahe-sync`. Sections 4.1, 4.2, 4.3, 7, 8, 10 updated throughout. User stories updated for two modes. DoD criterion 5 replaced with two-mode operation criterion; setup time split into 15 min (Mode A) and 30 min (Mode B). BDD setup feature completely rewritten: Mode A interactive flow, Mode B daemon, OAuth consent flow, remove events — cron/install-job scenarios removed. |
+| v1.1    | 2026-03-16 | API types confirmed: both PUW (Moodle web services) and WPS have documented REST APIs — no HTML scraping needed. AHE permission outreach dropped entirely. Section 4.3 connector descriptions updated. Sections 4.4 and 4.5 fully rewritten with confirmed endpoints, auth flows, schemas, event type mapping table, deduplication strategy (Moodle `event.id`, WPS `IDPlanZajecPoz`), Webinar handling, and semester-date range for WPS. Section 6 updated with confirmed endpoints, AHE permission gate removed. Section 7 restructured: PUW and WPS questions closed (marked ✅) where resolved by type files; new open questions added for Moodle rate limits, `attendance` eventtype, `timeduration:0`, semester date boundary strategy, WPS JWT refresh, `NazwaGrupy` display. Section 9 risks updated: AHE ToS risk removed, WPS HTML structure risk removed, ICS auth risk removed; new API-specific risks added (wstoken expiry, JWT expiry, Moodle rate limits, semester boundary). BDD scenarios updated: ICS/snapshot/UID language replaced with Moodle event.id and WPS IDPlanZajecPoz; first-sync, timezone, and API failure scenarios updated. |
+| v1.2    | 2026-03-16 | Language changed from Node.js/TypeScript to Python. Mode A (interactive CLI) removed entirely — tool is daemon-only. Entry point changed from `npm start` to Python daemon (method TBD by Architect). Sections 4.1, 4.2, 4.3 rewritten for Python daemon-only model. Section 7 packaging and scheduler questions updated for Python. Section 8 simplified to daemon-only DX. User stories updated — Mode A stories removed. DoD criterion 5 simplified to single daemon mode; setup time unified at 30 minutes. BDD: Mode A feature removed, Mode B renamed to Daemon with Python entry point, OAuth feature updated to daemon-first flow with token file reuse scenario, Remove feature updated, shutdown scenario added. |
