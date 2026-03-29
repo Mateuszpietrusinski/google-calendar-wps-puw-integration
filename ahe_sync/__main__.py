@@ -67,6 +67,19 @@ def _make_wps_job(connector: WpsConnector, calendar: CalendarClient, store: Stat
     return run
 
 
+def _run_startup_syncs(puw_job, wps_job) -> None:
+    if puw_job:
+        try:
+            puw_job()
+        except Exception:
+            pass
+    if wps_job:
+        try:
+            wps_job()
+        except Exception:
+            pass
+
+
 def _run_remove(source: str, calendar: CalendarClient, store: StateStore) -> None:
     events = calendar.list_future_tagged_events(source)
     for event in events:
@@ -85,6 +98,8 @@ def _run_daemon(config: Config) -> None:
 
     puw_job = _make_puw_job(puw_connector, calendar, store) if puw_connector else None
     wps_job = _make_wps_job(wps_connector, calendar, store) if wps_connector else None
+
+    _run_startup_syncs(puw_job, wps_job)
 
     scheduler = build_scheduler(puw_job, wps_job, config)
     scheduler.start()
