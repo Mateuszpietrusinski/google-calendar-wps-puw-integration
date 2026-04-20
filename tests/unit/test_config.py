@@ -22,7 +22,7 @@ def test_valid_config_parses(tmp_path):
         config = Config.load(env_path=tmp_path / "nonexistent.env")
 
     assert config.google_client_id == "test-client-id"
-    assert config.google_calendar_id == "primary"
+    assert config.google_calendar_id == ""
     assert config.puw_poll_interval_minutes == 10
     assert config.wps_poll_times == [(12, 0), (21, 0)]
     assert config.token_storage == ""

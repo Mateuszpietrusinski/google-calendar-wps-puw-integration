@@ -111,7 +111,7 @@ class Config:
         return cls(
             google_client_id=os.getenv("GOOGLE_CLIENT_ID", "").strip(),
             google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET", "").strip(),
-            google_calendar_id=os.getenv("GOOGLE_CALENDAR_ID", "primary").strip(),
+            google_calendar_id=os.getenv("GOOGLE_CALENDAR_ID", "").strip(),
             token_storage=token_storage,
             puw_enabled=puw_enabled,
             puw_username=puw_username,

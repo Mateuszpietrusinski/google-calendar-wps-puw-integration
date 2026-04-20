@@ -27,26 +27,29 @@ from google.auth.transport.requests import Request
 if TYPE_CHECKING:
     from ..config import Config
 
-SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
+SCOPES = [
+    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/calendar.readonly",
+]
 _CONFIG_DIR = Path.home() / ".config" / "ahe-sync"
 _TOKEN_PATH = _CONFIG_DIR / "token.json"
-_PREFS_PATH = _CONFIG_DIR / "prefs.json"
+PREFS_PATH = _CONFIG_DIR / "prefs.json"
 
 
 def _ensure_config_dir() -> None:
     _CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _load_prefs() -> dict:
-    if _PREFS_PATH.exists():
-        with open(_PREFS_PATH, encoding="utf-8") as f:
+def load_prefs() -> dict:
+    if PREFS_PATH.exists():
+        with open(PREFS_PATH, encoding="utf-8") as f:
             return json.load(f)
     return {}
 
 
-def _save_prefs(prefs: dict) -> None:
+def save_prefs(prefs: dict) -> None:
     _ensure_config_dir()
-    with open(_PREFS_PATH, "w", encoding="utf-8") as f:
+    with open(PREFS_PATH, "w", encoding="utf-8") as f:
         json.dump(prefs, f, indent=2)
 
 
@@ -111,6 +114,16 @@ def _save_token(creds: Credentials) -> None:
 def _load_token() -> Credentials | None:
     if not _TOKEN_PATH.exists():
         return None
+    with open(_TOKEN_PATH, encoding="utf-8") as f:
+        data = json.load(f)
+    stored_scopes = data.get("scopes")
+    if stored_scopes is not None:
+        if isinstance(stored_scopes, str):
+            stored_scopes = stored_scopes.split()
+        if not set(SCOPES).issubset(set(stored_scopes)):
+            print("Re-authorisation required (new permissions needed). Opening browser...")
+            _TOKEN_PATH.unlink(missing_ok=True)
+            return None
     return Credentials.from_authorized_user_file(str(_TOKEN_PATH), SCOPES)
 
 
@@ -126,12 +139,14 @@ def get_valid_credentials(config: "Config") -> Credentials:
 
     # Resolve mode from prefs if not explicitly set
     if not storage_mode:
-        prefs = _load_prefs()
+        prefs = load_prefs()
         storage_mode = prefs.get("token_storage", "")
 
     if not storage_mode:
         storage_mode = _prompt_storage_choice()
-        _save_prefs({"token_storage": storage_mode})
+        prefs = load_prefs()
+        prefs["token_storage"] = storage_mode
+        save_prefs(prefs)
 
     if storage_mode == "local":
         creds = _load_token()
