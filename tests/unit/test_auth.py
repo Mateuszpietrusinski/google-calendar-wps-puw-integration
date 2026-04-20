@@ -35,7 +35,7 @@ def test_memory_mode_never_writes_to_disk(tmp_path):
     with (
         patch.object(auth_module, "_CONFIG_DIR", tmp_path),
         patch.object(auth_module, "_TOKEN_PATH", tmp_path / "token.json"),
-        patch.object(auth_module, "_PREFS_PATH", tmp_path / "prefs.json"),
+        patch.object(auth_module, "PREFS_PATH", tmp_path / "prefs.json"),
         patch.object(auth_module, "_run_oauth_flow", return_value=fake_creds),
     ):
         result = auth_module.get_valid_credentials(_make_config(token_storage="memory"))
@@ -53,7 +53,7 @@ def test_local_mode_writes_token_json(tmp_path):
     with (
         patch.object(auth_module, "_CONFIG_DIR", tmp_path),
         patch.object(auth_module, "_TOKEN_PATH", tmp_path / "token.json"),
-        patch.object(auth_module, "_PREFS_PATH", tmp_path / "prefs.json"),
+        patch.object(auth_module, "PREFS_PATH", tmp_path / "prefs.json"),
         patch.object(auth_module, "_load_token", return_value=None),
         patch.object(auth_module, "_run_oauth_flow", return_value=fake_creds),
     ):
@@ -69,7 +69,7 @@ def test_local_mode_reuses_valid_token(tmp_path):
     with (
         patch.object(auth_module, "_CONFIG_DIR", tmp_path),
         patch.object(auth_module, "_TOKEN_PATH", tmp_path / "token.json"),
-        patch.object(auth_module, "_PREFS_PATH", tmp_path / "prefs.json"),
+        patch.object(auth_module, "PREFS_PATH", tmp_path / "prefs.json"),
         patch.object(auth_module, "_load_token", return_value=valid_creds),
         patch.object(auth_module, "_run_oauth_flow") as mock_flow,
     ):
@@ -86,7 +86,7 @@ def test_local_mode_refreshes_expired_token(tmp_path):
     with (
         patch.object(auth_module, "_CONFIG_DIR", tmp_path),
         patch.object(auth_module, "_TOKEN_PATH", tmp_path / "token.json"),
-        patch.object(auth_module, "_PREFS_PATH", tmp_path / "prefs.json"),
+        patch.object(auth_module, "PREFS_PATH", tmp_path / "prefs.json"),
         patch.object(auth_module, "_load_token", return_value=expired_creds),
         patch.object(auth_module, "_save_token"),
         patch("google.auth.transport.requests.Request"),
@@ -106,7 +106,7 @@ def test_prompt_default_enter_selects_local(tmp_path, monkeypatch):
     with (
         patch.object(auth_module, "_CONFIG_DIR", tmp_path),
         patch.object(auth_module, "_TOKEN_PATH", tmp_path / "token.json"),
-        patch.object(auth_module, "_PREFS_PATH", tmp_path / "prefs.json"),
+        patch.object(auth_module, "PREFS_PATH", tmp_path / "prefs.json"),
         patch.object(auth_module, "_load_token", return_value=None),
         patch.object(auth_module, "_run_oauth_flow", return_value=fake_creds),
     ):
@@ -124,7 +124,7 @@ def test_prompt_choice_2_selects_memory(tmp_path, monkeypatch):
     with (
         patch.object(auth_module, "_CONFIG_DIR", tmp_path),
         patch.object(auth_module, "_TOKEN_PATH", tmp_path / "token.json"),
-        patch.object(auth_module, "_PREFS_PATH", tmp_path / "prefs.json"),
+        patch.object(auth_module, "PREFS_PATH", tmp_path / "prefs.json"),
         patch.object(auth_module, "_run_oauth_flow", return_value=fake_creds),
     ):
         auth_module.get_valid_credentials(_make_config(token_storage=""))
@@ -142,10 +142,64 @@ def test_env_var_bypasses_prompt(tmp_path):
     with (
         patch.object(auth_module, "_CONFIG_DIR", tmp_path),
         patch.object(auth_module, "_TOKEN_PATH", tmp_path / "token.json"),
-        patch.object(auth_module, "_PREFS_PATH", tmp_path / "prefs.json"),
+        patch.object(auth_module, "PREFS_PATH", tmp_path / "prefs.json"),
         patch.object(auth_module, "_prompt_storage_choice") as mock_prompt,
         patch.object(auth_module, "_run_oauth_flow", return_value=fake_creds),
     ):
         auth_module.get_valid_credentials(_make_config(token_storage="memory"))
 
     mock_prompt.assert_not_called()
+
+
+# ── scope mismatch ────────────────────────────────────────────────────────────
+
+def test_scope_mismatch_deletes_token_and_reauths(tmp_path):
+    """Token missing calendar.readonly scope triggers fresh OAuth and saves new token."""
+    from ahe_sync.google import auth as auth_module
+
+    # Token with only calendar.events (missing calendar.readonly)
+    old_token = json.dumps({
+        "token": "old",
+        "refresh_token": "rtoken",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "client_id": "id",
+        "client_secret": "secret",
+        "scopes": ["https://www.googleapis.com/auth/calendar.events"],
+    })
+    token_path = tmp_path / "token.json"
+    token_path.write_text(old_token)
+
+    fresh_creds = _make_creds()
+    with (
+        patch.object(auth_module, "_CONFIG_DIR", tmp_path),
+        patch.object(auth_module, "_TOKEN_PATH", token_path),
+        patch.object(auth_module, "PREFS_PATH", tmp_path / "prefs.json"),
+        patch.object(auth_module, "_run_oauth_flow", return_value=fresh_creds) as mock_flow,
+    ):
+        result = auth_module.get_valid_credentials(_make_config(token_storage="local"))
+
+    # Scope mismatch triggers fresh OAuth flow and returns fresh credentials
+    mock_flow.assert_called_once()
+    assert result is fresh_creds
+    # New token.json is written with the fresh credentials
+    assert token_path.exists()
+
+
+def test_full_scopes_token_not_deleted(tmp_path):
+    """Token with all required scopes is reused without re-auth."""
+    from ahe_sync.google import auth as auth_module
+
+    valid_creds = _make_creds(valid=True, expired=False)
+    valid_creds.scopes = set(auth_module.SCOPES)
+
+    with (
+        patch.object(auth_module, "_CONFIG_DIR", tmp_path),
+        patch.object(auth_module, "_TOKEN_PATH", tmp_path / "token.json"),
+        patch.object(auth_module, "PREFS_PATH", tmp_path / "prefs.json"),
+        patch.object(auth_module, "_load_token", return_value=valid_creds),
+        patch.object(auth_module, "_run_oauth_flow") as mock_flow,
+    ):
+        result = auth_module.get_valid_credentials(_make_config(token_storage="local"))
+
+    mock_flow.assert_not_called()
+    assert result is valid_creds

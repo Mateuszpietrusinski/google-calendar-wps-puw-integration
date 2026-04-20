@@ -43,7 +43,7 @@ C4Container
     Container(env_file, ".env file", "Plaintext config", "Credentials and settings; never committed to VCS")
     Container(state_file, "state.json", "JSON file (~/.config/ahe-sync/)", "Tracks synced event IDs and change-detection hashes")
     Container(token_file, "token.json (optional)", "JSON file (~/.config/ahe-sync/)", "Google OAuth tokens — only written if student consents (TOKEN_STORAGE=local)")
-    Container(prefs_file, "prefs.json", "JSON file (~/.config/ahe-sync/)", "Records student's token storage choice so first-run prompt is not repeated")
+    Container(prefs_file, "prefs.json", "JSON file (~/.config/ahe-sync/)", "Records student's token storage choice and target calendar ID so first-run prompts are not repeated")
   }
 
   System_Ext(puw, "PUW / Moodle API")
@@ -80,12 +80,14 @@ C4Component
     Component(puw_conn, "connectors/puw", "Python module", "Moodle auth (wstoken) + calendar fetch (3 months) + mapping to CalendarEvent")
     Component(wps_conn, "connectors/wps", "Python module", "WPS JWT auth + plan fetch + mapping to CalendarEvent; proactive token refresh")
     Component(gcal_client, "google/calendar", "Python module", "Google Calendar API wrapper: create, update, delete, find_tagged_events")
+    Component(cal_select, "google/calendar_select", "Python module", "Resolves target calendar: env var → prefs.json → interactive picker; persists choice")
     Component(oauth, "google/auth", "Python module", "First-run consent prompt; tiered token storage (memory / local); auto-opens browser on restart in memory mode")
   }
 
   Rel(main, config, "Reads at startup")
   Rel(main, scheduler, "Builds and starts")
   Rel(main, oauth, "Triggers on first run; re-triggers on each restart if memory mode")
+  Rel(main, cal_select, "Resolves target calendar ID after OAuth")
   Rel(scheduler, puw_conn, "Calls on interval")
   Rel(scheduler, wps_conn, "Calls on cron")
   Rel(puw_conn, sync_engine, "Passes fetched events")
@@ -128,6 +130,20 @@ sequenceDiagram
     Auth-->>Auth: Hold token in process memory only
   end
   Auth-->>Main: credentials (in-memory object)
+  Main->>CalSelect: resolve_calendar_id(config, credentials)
+  alt GOOGLE_CALENDAR_ID set in .env
+    CalSelect-->>CalSelect: Verify ID exists in user's calendar list
+    CalSelect-->>Main: calendar_id (from env)
+  else calendar_id in prefs.json
+    CalSelect-->>Main: calendar_id (persisted)
+  else first run, no calendar configured
+    CalSelect->>Google: calendarList.list() — fetch writable calendars
+    Google-->>CalSelect: List of calendars (owner/writer only, ≤ 20)
+    CalSelect->>Student: Display numbered list; prompt for choice
+    Student-->>CalSelect: Number selection
+    CalSelect-->>CalSelect: Write calendar_id to prefs.json
+    CalSelect-->>Main: calendar_id (selected)
+  end
   Main->>Main: Start scheduler
 ```
 
@@ -166,8 +182,9 @@ ahe_sync/
 ├── scheduler.py        # APScheduler setup; register PUW (IntervalTrigger) + WPS (CronTrigger)
 ├── sync_engine.py      # compute_diff() + apply_sync_plan(); pure functions; no I/O
 ├── google/
-│   ├── auth.py         # get_valid_credentials(); first-run browser flow; token.json
-│   └── calendar.py     # CalendarClient: create_event, update_event, delete_event, find_tagged_events
+│   ├── auth.py              # get_valid_credentials(); first-run browser flow; token.json; scope-mismatch re-auth
+│   ├── calendar.py          # CalendarClient: create_event, update_event, delete_event, find_tagged_events
+│   └── calendar_select.py   # resolve_calendar_id(); list_calendars(); interactive picker; persists to prefs.json
 └── connectors/
     ├── base.py         # ConnectorBase ABC: fetch() → list[CalendarEvent]
     ├── puw.py          # Moodle: wstoken auth + 3-month calendar fetch + mapping
@@ -223,6 +240,15 @@ class SyncResult:
     deleted: int
     errors: list[str]   # human-readable; non-fatal failures → retry next cycle
 ```
+
+**prefs.json shape** (`~/.config/ahe-sync/prefs.json`):
+```json
+{
+  "token_storage": "local",
+  "calendar_id": "c_abc123@group.calendar.google.com"
+}
+```
+Keys written independently: `token_storage` on first-run OAuth consent; `calendar_id` on first-run calendar selection. Both prompts only show once; subsequent starts skip them.
 
 **State JSON shape** (`~/.config/ahe-sync/state.json`):
 ```json
@@ -297,7 +323,8 @@ TOKEN_STORAGE=                        # local (default) | memory
 # Optional — overrides (defaults shown)
 PUW_POLL_INTERVAL_MINUTES=10          # Minimum enforced: 10
 WPS_POLL_TIMES_CET=12:00,21:00        # Comma-separated HH:MM
-GOOGLE_CALENDAR_ID=primary
+GOOGLE_CALENDAR_ID=                   # If unset, prompted once on first run; choice saved to prefs.json
+                                      # Use "primary" to always sync into the default Google Calendar
 
 # Optional — per-event reminders (minutes before; 0 = no reminder)
 REMINDER_LECTURE_MINUTES=30

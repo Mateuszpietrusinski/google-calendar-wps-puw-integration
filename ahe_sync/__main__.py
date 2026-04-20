@@ -16,6 +16,7 @@ import time
 from .config import Config
 from .google.auth import get_valid_credentials
 from .google.calendar import CalendarClient
+from .google.calendar_select import resolve_calendar_id
 from .connectors.puw import PuwConnector
 from .connectors.wps import WpsConnector
 from .scheduler import build_scheduler
@@ -90,7 +91,8 @@ def _run_remove(source: str, calendar: CalendarClient, store: StateStore) -> Non
 
 def _run_daemon(config: Config) -> None:
     creds = get_valid_credentials(config)
-    calendar = CalendarClient(creds, config.google_calendar_id)
+    calendar_id = resolve_calendar_id(config, creds)
+    calendar = CalendarClient(creds, calendar_id)
     store = StateStore()
 
     puw_connector = PuwConnector(config) if config.puw_enabled else None
@@ -143,7 +145,8 @@ def main() -> None:
 
     if args.command == "remove":
         creds = get_valid_credentials(config)
-        calendar = CalendarClient(creds, config.google_calendar_id)
+        calendar_id = resolve_calendar_id(config, creds)
+        calendar = CalendarClient(creds, calendar_id)
         store = StateStore()
         _run_remove(args.source, calendar, store)
     else:
